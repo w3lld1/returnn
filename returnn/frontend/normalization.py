@@ -70,7 +70,9 @@ def moments(
         x_sum_sq = rf.reduce_sum(x * x, axis=axis, use_mask=use_mask, distributed=True)
         # packed storage has no padded frames, so its sums above cover the sequence frames only
         count = rf.num_elements_of_shape(axis, use_mask=use_mask or rf.is_packed(x))
-        assert isinstance(count, Tensor), f"distributed moments expects a dynamic count, got {count!r}"
+        if not isinstance(count, Tensor):
+            # static shape (e.g. dims with a declared capacity), the same count on every worker
+            count = rf.convert_to_tensor(count, dtype="int64", device=x.device)
         # the count is local per worker; sum it across workers too.
         # noinspection PyProtectedMember
         count = count._raw_backend.reduce_distributed(count, mode="sum")

@@ -112,7 +112,7 @@ def test_moments_and_batch_norm_keep_use_mask():
 def test_batch_norm_distributed_like_local():
     """
     With ``rf_moments_use_fixed_masking``, distributed BatchNorm normalizes like the local one
-    also on packed storage, masked or not.
+    also on packed storage and over a dim with a declared capacity, masked or not.
     """
     import torch
     from returnn.config import Config, global_config_ctx
@@ -122,10 +122,12 @@ def test_batch_norm_distributed_like_local():
     feat = Dim(3, name="feat")
     time_sizes = Tensor("time_size", dims=[batch], dtype="int32", raw_tensor=torch.tensor([5, 3], dtype=torch.int32))
     time_dim = Dim(time_sizes, name="time")
+    bounded_time_dim = Dim(time_sizes, name="time_bounded", capacity=5)
     torch.manual_seed(3)
     raw = torch.randn(2, 5, 3)
     inputs = {
         "packed": rf.pack(Tensor("x", dims=[batch, time_dim, feat], dtype="float32", raw_tensor=raw), gap=2),
+        "bounded": Tensor("x", dims=[batch, bounded_time_dim, feat], dtype="float32", raw_tensor=raw),
     }
     with global_config_ctx(Config({"rf_moments_use_fixed_masking": True})):
         for name, x in inputs.items():
